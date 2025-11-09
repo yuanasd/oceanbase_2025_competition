@@ -115,42 +115,49 @@ int ObExprWhitespaceTokenize::eval_whitespace_tokenize(const ObExpr &expr,
       // Tokenize the input string based on whitespace
       const char *str = real_input_str.ptr();
       int64_t len = real_input_str.length();
-      int64_t pos = 0;
       
-      // Skip leading whitespace
-      while (pos < len && isspace(str[pos])) {
-        pos++;
-      }
-
-      while (pos < len && OB_SUCC(ret)) {
-        int64_t token_start = pos;
+      // Handle empty string case - empty string returns empty array
+      if (len > 0) {
+        int64_t pos = 0;
         
-        // Find the end of the token (until whitespace)
-        while (pos < len && !isspace(str[pos])) {
+        // Skip leading whitespace
+        while (pos < len && isspace(static_cast<unsigned char>(str[pos]))) {
           pos++;
         }
 
-        // Add the token to the array
-        if (token_start < pos) {
-          int64_t token_len = pos - token_start;
-          char *token_buf = static_cast<char *>(tmp_allocator.alloc(token_len));
-          if (OB_ISNULL(token_buf)) {
-            ret = OB_ALLOCATE_MEMORY_FAILED;
-            LOG_WARN("failed to alloc memory for token", K(ret), K(token_len));
-          } else {
-            std::memcpy(token_buf, str + token_start, token_len);
-            ObString token(token_len, token_buf);
-            if (OB_FAIL(binary_array->push_back(token))) {
-              LOG_WARN("failed to push token to array", K(ret), K(token));
+        // Process tokens
+        while (pos < len && OB_SUCC(ret)) {
+          int64_t token_start = pos;
+          
+          // Find the end of the token (until whitespace)
+          while (pos < len && !isspace(static_cast<unsigned char>(str[pos]))) {
+            pos++;
+          }
+
+          // Add the token to the array if we found one
+          if (token_start < pos) {
+            int64_t token_len = pos - token_start;
+            // Allocate memory from tmp_allocator to ensure data lifetime
+            char *token_buf = static_cast<char *>(tmp_allocator.alloc(token_len));
+            if (OB_ISNULL(token_buf)) {
+              ret = OB_ALLOCATE_MEMORY_FAILED;
+              LOG_WARN("failed to alloc memory for token", K(ret), K(token_len));
+            } else {
+              std::memcpy(token_buf, str + token_start, token_len);
+              ObString token(token_len, token_buf);
+              if (OB_FAIL(binary_array->push_back(token))) {
+                LOG_WARN("failed to push token to array", K(ret), K(token));
+              }
             }
           }
-        }
 
-        // Skip trailing whitespace
-        while (pos < len && isspace(str[pos])) {
-          pos++;
+          // Skip trailing whitespace
+          while (pos < len && isspace(static_cast<unsigned char>(str[pos]))) {
+            pos++;
+          }
         }
       }
+      // If len == 0, empty array is already created and will be returned
 
       if (OB_SUCC(ret)) {
         ObString res_str;
