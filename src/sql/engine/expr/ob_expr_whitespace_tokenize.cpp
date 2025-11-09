@@ -19,6 +19,8 @@
 #include "sql/engine/ob_exec_context.h"
 #include "sql/engine/expr/ob_expr_result_type_util.h"
 #include "lib/charset/ob_ctype.h"
+#include <cctype>
+#include <cstring>
 
 using namespace oceanbase::common;
 using namespace oceanbase::sql;
@@ -29,7 +31,7 @@ namespace sql
 {
 
 ObExprWhitespaceTokenize::ObExprWhitespaceTokenize(ObIAllocator &alloc)
-    : ObFuncExprOperator(alloc, T_FUN_SYS_WHITESPACE_TOKENIZE, N_WHITESPACE_TOKENIZE, ONE, VALID_FOR_GENERATED_COL, NOT_ROW_DIMENSION)
+    : ObFuncExprOperator(alloc, T_FUN_SYS_WHITESPACE_TOKENIZE, N_WHITESPACE_TOKENIZE, 1, VALID_FOR_GENERATED_COL, NOT_ROW_DIMENSION)
 {
 }
 
@@ -130,9 +132,17 @@ int ObExprWhitespaceTokenize::eval_whitespace_tokenize(const ObExpr &expr,
 
         // Add the token to the array
         if (token_start < pos) {
-          ObString token(pos - token_start, str + token_start);
-          if (OB_FAIL(binary_array->push_back(ObString(token)))) {
-            LOG_WARN("failed to push token to array", K(ret), K(token));
+          int64_t token_len = pos - token_start;
+          char *token_buf = static_cast<char *>(tmp_allocator.alloc(token_len));
+          if (OB_ISNULL(token_buf)) {
+            ret = OB_ALLOCATE_MEMORY_FAILED;
+            LOG_WARN("failed to alloc memory for token", K(ret), K(token_len));
+          } else {
+            std::memcpy(token_buf, str + token_start, token_len);
+            ObString token(token_len, token_buf);
+            if (OB_FAIL(binary_array->push_back(token))) {
+              LOG_WARN("failed to push token to array", K(ret), K(token));
+            }
           }
         }
 
