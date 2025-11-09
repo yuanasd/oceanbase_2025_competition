@@ -38,6 +38,7 @@
 #include "ob_expr_host_ip.h"
 #include "ob_expr_trim.h"
 #include "ob_expr_tokenize.h"
+#include "ob_expr_whitespace_tokenize.h"
 #include "ob_expr_insert.h"
 #include "ob_expr_int2ip.h"
 #include "ob_expr_int_div.h"

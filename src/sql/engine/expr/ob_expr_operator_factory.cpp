@@ -188,6 +188,7 @@
 #include "sql/engine/expr/ob_expr_doc_length.h"
 #include "sql/engine/expr/ob_expr_word_segment.h"
 #include "sql/engine/expr/ob_expr_word_count.h"
+#include "sql/engine/expr/ob_expr_whitespace_tokenize.h"
 #include "sql/engine/expr/ob_expr_ascii.h"
 #include "sql/engine/expr/ob_expr_truncate.h"
 #include "sql/engine/expr/ob_expr_bit_count.h"
@@ -960,6 +961,7 @@ void ObExprOperatorFactory::register_expr_operators()
     REG_OP(ObExprDocLength);
     REG_OP(ObExprWordSegment);
     REG_OP(ObExprWordCount);
+    REG_OP(ObExprWhitespaceTokenize);
     REG_OP(ObExprObjAccess);
     REG_OP(ObExprEnumToStr);
     REG_OP(ObExprSetToStr);
@@ -1816,6 +1818,8 @@ void ObExprOperatorFactory::get_function_alias_name(const ObString &origin_name,
       alias_name = ObString::make_string(N_WORD_SEGMENT);
     } else if (0 == origin_name.case_compare("WORD_COUNT")) {
       alias_name = ObString::make_string(N_WORD_COUNT);
+    } else if (0 == origin_name.case_compare("WHITESPACE_TOKENIZE")) {
+      alias_name = ObString::make_string(N_WHITESPACE_TOKENIZE);
     } else if (0 == origin_name.case_compare("DOC_LENGTH")) {
       alias_name = ObString::make_string(N_DOC_LENGTH);
     } else if (0 == origin_name.case_compare("inet_ntoa")) {

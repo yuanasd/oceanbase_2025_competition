@@ -835,6 +835,7 @@
 #define N_DOC_ID "doc_id"
 #define N_WORD_SEGMENT "word_segment"
 #define N_WORD_COUNT "word_count"
+#define N_WHITESPACE_TOKENIZE "whitespace_tokenize"
 #define N_DOC_LENGTH "doc_length"
 #define N_TOKENIZE "tokenize"
 #define N_SELF_JOIN "self_join"
