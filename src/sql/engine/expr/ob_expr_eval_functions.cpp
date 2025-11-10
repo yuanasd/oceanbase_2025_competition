@@ -1415,36 +1415,37 @@ static ObExpr::EvalFunc g_expr_eval_functions[] = {
   ObExprUDF::eval_external_udf,                                        /* 850 */
   ObExprStartUpMode::eval_startup_mode,                                /* 851 */
   ObExprVectorL2Squared::calc_l2_squared,                              /* 852 */
+  ObExprWhitespaceTokenize::eval_whitespace_tokenize,                  /* 853 */
 #if defined(ENABLE_DEBUG_LOG) || !defined(NDEBUG)
-  ObExprTmpFileOpen::eval_tmp_file_open,                              /* 853 */
-  ObExprTmpFileClose::eval_tmp_file_close,                            /* 854 */
-  ObExprTmpFileWrite::eval_tmp_file_write,                            /* 855 */
-  ObExprTmpFileRead::eval_tmp_file_read,                              /* 856 */
+  ObExprTmpFileOpen::eval_tmp_file_open,                              /* 854 */
+  ObExprTmpFileClose::eval_tmp_file_close,                            /* 855 */
+  ObExprTmpFileWrite::eval_tmp_file_write,                            /* 856 */
+  ObExprTmpFileRead::eval_tmp_file_read,                              /* 857 */
 #else
-  NULL,// ObExprTmpFileOpen::eval_tmp_file_open,                      /* 853 */
-  NULL,// ObExprTmpFileClose::eval_tmp_file_close,                    /* 854 */
-  NULL,// ObExprTmpFileWrite::eval_tmp_file_write,                    /* 855 */
-  NULL,// ObExprTmpFileRead::eval_tmp_file_read,                      /* 856 */
+  NULL,// ObExprTmpFileOpen::eval_tmp_file_open,                      /* 854 */
+  NULL,// ObExprTmpFileClose::eval_tmp_file_close,                    /* 855 */
+  NULL,// ObExprTmpFileWrite::eval_tmp_file_write,                    /* 856 */
+  NULL,// ObExprTmpFileRead::eval_tmp_file_read,                      /* 857 */
 #endif
-  ObExprAIComplete::eval_ai_complete,                                 /* 857 */
-  ObExprAIEmbed::eval_ai_embed,                                       /* 858 */
-  ObExprAIRerank::eval_ai_rerank,                                     /* 859 */
-  NULL,//ObExprMd5ConcatWs::calc_md5_concat_ws_expr                   /* 860 */
-  ObExprUDF::eval_mysql_udtf,                                         /* 861 */
-  NULL,//ObExprHiddenClusteringKey::eval_hidden_clustering_key,       /* 862 */
-  ObExprFormatProfile::format_profile,                                /* 863 */
-  ObExprLocalDynamicFilter::eval_local_dynamic_filter,                /* 864 */
-  NULL, // ObExprVecChunk::generate_vec_chunk,                        /* 865 */
-  NULL, // ObExprEmbeddedVec::generate_embedded_vec,                  /* 866 */
-  NULL, // ObExprSemanticDistance::calc_semantic_distance,            /* 867 */
-  ObExprBucket::calc_bucket_expr,                                     /* 868 */
-  NULL, // ObExprSemanticVectorDistance::calc_semantic_vector_distance, /* 869 */
-  NULL, // ObExprAIPrompt::eval_ai_prompt,                             /* 870 */
-  NULL, // ObExprVectorL2Similarity::calc_l2_similarity               /* 871 */
-  NULL, // ObExprVectorCosineSimilarity::calc_cosine_similarity       /* 872 */
-  NULL, // ObExprVectorIPSimilarity::calc_ip_similarity               /* 873 */
-  NULL, // ObExprVectorSimilarity::calc_similarity                    /* 874 */
-  NULL, // ObExprVecVisible::generate_vec_visible                     /* 875 */
+  ObExprAIComplete::eval_ai_complete,                                 /* 858 */
+  ObExprAIEmbed::eval_ai_embed,                                       /* 859 */
+  ObExprAIRerank::eval_ai_rerank,                                     /* 860 */
+  NULL,//ObExprMd5ConcatWs::calc_md5_concat_ws_expr                   /* 861 */
+  ObExprUDF::eval_mysql_udtf,                                         /* 862 */
+  NULL,//ObExprHiddenClusteringKey::eval_hidden_clustering_key,       /* 863 */
+  ObExprFormatProfile::format_profile,                                /* 864 */
+  ObExprLocalDynamicFilter::eval_local_dynamic_filter,                /* 865 */
+  NULL, // ObExprVecChunk::generate_vec_chunk,                        /* 866 */
+  NULL, // ObExprEmbeddedVec::generate_embedded_vec,                  /* 867 */
+  NULL, // ObExprSemanticDistance::calc_semantic_distance,            /* 868 */
+  ObExprBucket::calc_bucket_expr,                                     /* 869 */
+  NULL, // ObExprSemanticVectorDistance::calc_semantic_vector_distance, /* 870 */
+  NULL, // ObExprAIPrompt::eval_ai_prompt,                             /* 871 */
+  NULL, // ObExprVectorL2Similarity::calc_l2_similarity               /* 872 */
+  NULL, // ObExprVectorCosineSimilarity::calc_cosine_similarity       /* 873 */
+  NULL, // ObExprVectorIPSimilarity::calc_ip_similarity               /* 874 */
+  NULL, // ObExprVectorSimilarity::calc_similarity                    /* 875 */
+  NULL, // ObExprVecVisible::generate_vec_visible                     /* 876 */
 };
 
 static ObExpr::EvalBatchFunc g_expr_eval_batch_functions[] = {
