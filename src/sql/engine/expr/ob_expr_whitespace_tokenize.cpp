@@ -25,35 +25,36 @@ namespace sql
 {
 
 ObExprWhitespaceTokenize::ObExprWhitespaceTokenize(ObIAllocator &alloc)
-    : ObFuncExprOperator(alloc, T_FUN_SYS_WHITESPACE_TOKENIZE, N_WHITESPACE_TOKENIZE, 1, VALID_FOR_GENERATED_COL, NOT_ROW_DIMENSION)
+    : ObStringExprOperator(alloc, T_FUN_SYS_WHITESPACE_TOKENIZE, "whitespace_tokenize", 1, VALID_FOR_GENERATED_COL)
 {
 }
 
-int ObExprWhitespaceTokenize::calc_result_typeN(ObExprResType &type,
-                                                ObExprResType *types,
-                                                int64_t param_num,
-                                                common::ObExprTypeCtx &type_ctx) const
+int ObExprWhitespaceTokenize::calc_result_type1(ObExprResType &type,
+                                                ObExprResType &type1,
+                                                ObExprTypeCtx &type_ctx) const
 {
   int ret = OB_SUCCESS;
   UNUSED(type_ctx);
-
-  if (OB_ISNULL(types) || param_num != 1) {
-    ret = OB_INVALID_ARGUMENT;
-    LOG_WARN("invalid arguments", K(ret), K(param_num), KP(types));
+  
+  // 验证输入参数类型
+  if (OB_UNLIKELY(!ob_is_varchar_char_type(type1.get_type(), type1.get_collation_type()) &&
+                  !ob_is_text(type1.get_type(), type1.get_collation_type()) &&
+                  !ob_is_null(type1.get_type()))) {
+    ret = OB_ERR_INVALID_TYPE_FOR_OP;
+    LOG_USER_ERROR(OB_ERR_INVALID_TYPE_FOR_OP, "VARCHAR", ob_obj_type_str(type1.get_type()));
   } else {
-    // Set input parameter calculation type
-    types[0].set_calc_type(ObVarcharType);
-    types[0].set_calc_collation_type(types[0].get_collation_type());
-    types[0].set_calc_collation_level(types[0].get_collation_level());
-
-    // Always return VARCHAR type for stability and compatibility
-    // Result format: [token1,token2,...]
+    // 设置输入参数计算类型为 VARCHAR
+    type1.set_calc_type(ObVarcharType);
+    type1.set_calc_collation_type(type1.get_collation_type());
+    type1.set_calc_collation_level(type1.get_collation_level());
+    
+    // 设置返回类型为 VARCHAR，格式为 [token1,token2,...]
     type.set_varchar();
-    type.set_collation_type(types[0].get_collation_type());
-    type.set_collation_level(types[0].get_collation_level());
+    type.set_collation_type(type1.get_collation_type());
+    type.set_collation_level(type1.get_collation_level());
     type.set_length(OB_MAX_VARCHAR_LENGTH);
   }
-
+  
   return ret;
 }
 
@@ -69,16 +70,14 @@ int ObExprWhitespaceTokenize::eval_whitespace_tokenize(const ObExpr &expr,
   if (OB_FAIL(expr.args_[0]->eval(ctx, input_datum))) {
     LOG_WARN("eval input argument failed", K(ret));
   } else if (OB_ISNULL(input_datum)) {
-    // Null pointer check
     res.set_null();
   } else if (input_datum->is_null()) {
-    // Null value check - covers all NULL sources
     res.set_null();
   } else {
     ObString input_str = input_datum->get_string();
     ObString real_input_str = input_str;
 
-    // Get real string data if it's a lob (TEXT/CLOB support)
+    // 获取真实字符串数据 (支持 LOB/CLOB)
     if (OB_FAIL(ObTextStringHelper::read_real_string_data(tmp_allocator,
                                                           *input_datum,
                                                           expr.args_[0]->datum_meta_,
@@ -89,7 +88,7 @@ int ObExprWhitespaceTokenize::eval_whitespace_tokenize(const ObExpr &expr,
       const char *str = real_input_str.ptr();
       int64_t len = real_input_str.length();
       
-      // Safety check: validate string pointer and length
+      // 安全检查：验证字符串指针和长度
       if (OB_UNLIKELY(len < 0)) {
         ret = OB_INVALID_ARGUMENT;
         LOG_WARN("invalid string length", K(ret), K(len));
@@ -99,86 +98,80 @@ int ObExprWhitespaceTokenize::eval_whitespace_tokenize(const ObExpr &expr,
       } else {
         ObExprStrResAlloc res_alloc(expr, ctx);
         
-        // First pass: Calculate result length needed
-        int64_t result_len = 2; // for "[]"
+        // 第一遍：计算结果长度
+        int64_t result_len = 2; // "[]"
         int64_t pos = 0;
         int64_t token_count = 0;
         const int64_t MAX_RESULT_LEN = OB_MAX_VARCHAR_LENGTH;
         
         while (pos < len && OB_SUCC(ret)) {
-          // Skip leading whitespace
+          // 跳过前导空格
           while (pos < len && isspace(static_cast<unsigned char>(str[pos]))) {
             pos++;
           }
           if (pos < len) {
-            // Found token start
+            // 找到 token 的起点
             int64_t token_start = pos;
             while (pos < len && !isspace(static_cast<unsigned char>(str[pos]))) {
               pos++;
             }
             int64_t token_len = pos - token_start;
             
-            // Check for integer overflow before adding
+            // 检查整数溢出
             if (OB_UNLIKELY(result_len > MAX_RESULT_LEN - token_len - 1)) {
               ret = OB_SIZE_OVERFLOW;
               LOG_WARN("result buffer size overflow", K(ret), K(result_len), K(token_len));
               break;
             }
-            
-            result_len += token_len;
-            if (token_count > 0) {
-              result_len += 1; // comma separator
-            }
+            result_len += token_len + 1; // token + ","
             token_count++;
           }
         }
-
-        // Allocate buffer for result
+        
         if (OB_SUCC(ret)) {
-          char *buf = static_cast<char *>(res_alloc.alloc(result_len));
-          if (OB_ISNULL(buf)) {
-            ret = OB_ALLOCATE_MEMORY_FAILED;
-            LOG_WARN("fail to alloc result buffer", K(ret), K(result_len));
+          // 分配空间
+          char *buf = NULL;
+          if (OB_FAIL(res_alloc.alloc(result_len, buf))) {
+            LOG_WARN("failed to allocate buffer", K(ret), K(result_len));
           } else {
-            // Second pass: Build the string result with format [token1,token2,...]
+            // 第二遍：填充结果
             int64_t write_pos = 0;
-            buf[write_pos++] = '[';
-            
             pos = 0;
+            buf[write_pos++] = '[';
             int64_t token_idx = 0;
+            
             while (pos < len && OB_SUCC(ret)) {
-              // Skip leading whitespace
+              // 跳过前导空格
               while (pos < len && isspace(static_cast<unsigned char>(str[pos]))) {
                 pos++;
               }
               if (pos < len) {
-                // Add comma separator before non-first tokens
-                if (token_idx > 0) {
-                  if (OB_UNLIKELY(write_pos >= result_len)) {
-                    ret = OB_SIZE_OVERFLOW;
-                    LOG_WARN("buffer position overflow", K(ret), K(write_pos), K(result_len));
-                    break;
-                  }
-                  buf[write_pos++] = ',';
-                }
-                
-                // Extract and copy token
+                // 找到 token 的起点
                 int64_t token_start = pos;
                 while (pos < len && !isspace(static_cast<unsigned char>(str[pos]))) {
                   pos++;
                 }
                 int64_t token_len = pos - token_start;
                 
-                // Safety check for buffer write
-                if (OB_UNLIKELY(write_pos + token_len > result_len)) {
-                  ret = OB_SIZE_OVERFLOW;
-                  LOG_WARN("buffer size check failed", K(ret), K(write_pos), K(token_len), K(result_len));
-                  break;
+                // 添加分隔符
+                if (token_idx > 0) {
+                  if (OB_UNLIKELY(write_pos >= result_len)) {
+                    ret = OB_SIZE_OVERFLOW;
+                    LOG_WARN("buffer position check failed", K(ret), K(write_pos), K(result_len));
+                    break;
+                  }
+                  buf[write_pos++] = ',';
                 }
                 
-                MEMCPY(buf + write_pos, str + token_start, token_len);
-                write_pos += token_len;
-                token_idx++;
+                if (OB_FAIL(ret)) {
+                } else if (OB_UNLIKELY(write_pos + token_len > result_len)) {
+                  ret = OB_SIZE_OVERFLOW;
+                  LOG_WARN("buffer size check failed", K(ret), K(write_pos), K(token_len), K(result_len));
+                } else {
+                  MEMCPY(buf + write_pos, str + token_start, token_len);
+                  write_pos += token_len;
+                  token_idx++;
+                }
               }
             }
             
@@ -204,20 +197,11 @@ int ObExprWhitespaceTokenize::cg_expr(ObExprCGCtx &op_cg_ctx,
                                      const ObRawExpr &raw_expr,
                                      ObExpr &rt_expr) const
 {
-  int ret = OB_SUCCESS;
   UNUSED(op_cg_ctx);
   UNUSED(raw_expr);
-  
-  if (OB_UNLIKELY(rt_expr.arg_cnt_ != 1)) {
-    ret = OB_INVALID_ARGUMENT;
-    LOG_WARN("invalid arguments", K(rt_expr.arg_cnt_));
-  } else {
-    rt_expr.eval_func_ = eval_whitespace_tokenize;
-  }
-
-  return ret;
+  rt_expr.eval_func_ = eval_whitespace_tokenize;
+  return OB_SUCCESS;
 }
 
 } // namespace sql
 } // namespace oceanbase
-

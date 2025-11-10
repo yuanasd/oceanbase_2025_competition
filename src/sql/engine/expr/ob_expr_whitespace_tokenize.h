@@ -20,15 +20,14 @@ namespace oceanbase
 namespace sql
 {
 
-class ObExprWhitespaceTokenize : public ObFuncExprOperator
+class ObExprWhitespaceTokenize : public ObStringExprOperator
 {
 public:
   explicit ObExprWhitespaceTokenize(common::ObIAllocator &alloc);
   virtual ~ObExprWhitespaceTokenize() {}
 
-  virtual int calc_result_typeN(ObExprResType &type,
-                                ObExprResType *types,
-                                int64_t param_num,
+  virtual int calc_result_type1(ObExprResType &type,
+                                ObExprResType &type1,
                                 common::ObExprTypeCtx &type_ctx) const override;
 
   static int eval_whitespace_tokenize(const ObExpr &expr,
@@ -38,11 +37,6 @@ public:
   virtual int cg_expr(ObExprCGCtx &op_cg_ctx,
                       const ObRawExpr &raw_expr,
                       ObExpr &rt_expr) const override;
-
-private:
-  static int tokenize(common::ObString &output,
-                      const common::ObString &input,
-                      common::ObIAllocator &allocator);
 
   DISALLOW_COPY_AND_ASSIGN(ObExprWhitespaceTokenize);
 };
