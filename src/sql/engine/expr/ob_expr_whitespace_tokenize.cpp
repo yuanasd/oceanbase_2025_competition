@@ -21,6 +21,7 @@
 #include "lib/charset/ob_ctype.h"
 #include <cctype>
 #include <cstring>
+#include <string>
 
 using namespace oceanbase::common;
 using namespace oceanbase::sql;
@@ -116,8 +117,10 @@ int ObExprWhitespaceTokenize::eval_whitespace_tokenize(const ObExpr &expr,
       const char *str = real_input_str.ptr();
       int64_t len = real_input_str.length();
       
-      // Handle empty string case - empty string returns empty array
-      if (len > 0) {
+      // Handle empty string case
+      if (len == 0) {
+        // Empty string returns empty array, which is already created
+      } else {
         int64_t pos = 0;
         
         // Skip leading whitespace
@@ -125,7 +128,6 @@ int ObExprWhitespaceTokenize::eval_whitespace_tokenize(const ObExpr &expr,
           pos++;
         }
 
-        // Process tokens
         while (pos < len && OB_SUCC(ret)) {
           int64_t token_start = pos;
           
@@ -134,20 +136,14 @@ int ObExprWhitespaceTokenize::eval_whitespace_tokenize(const ObExpr &expr,
             pos++;
           }
 
-          // Add the token to the array if we found one
+          // Add the token to the array
           if (token_start < pos) {
             int64_t token_len = pos - token_start;
-            // Allocate memory from tmp_allocator to ensure data lifetime
-            char *token_buf = static_cast<char *>(tmp_allocator.alloc(token_len));
-            if (OB_ISNULL(token_buf)) {
-              ret = OB_ALLOCATE_MEMORY_FAILED;
-              LOG_WARN("failed to alloc memory for token", K(ret), K(token_len));
-            } else {
-              std::memcpy(token_buf, str + token_start, token_len);
-              ObString token(token_len, token_buf);
-              if (OB_FAIL(binary_array->push_back(token))) {
-                LOG_WARN("failed to push token to array", K(ret), K(token));
-              }
+            // Use std::string to ensure data is properly copied
+            std::string token_str(str + token_start, token_len);
+            ObString token(token_str.length(), token_str.data());
+            if (OB_FAIL(binary_array->push_back(token))) {
+              LOG_WARN("failed to push token to array", K(ret), K(token));
             }
           }
 
