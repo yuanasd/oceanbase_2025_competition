@@ -14,6 +14,7 @@
 
 #include "sql/engine/expr/ob_expr_whitespace_tokenize.h"
 #include "sql/engine/expr/ob_expr_lob_utils.h"
+#include "lib/charset/ob_charset.h"
 #include "lib/oblog/ob_log.h"
 #include <cctype>
 
@@ -34,8 +35,6 @@ int ObExprWhitespaceTokenize::calc_result_type1(ObExprResType &type,
                                                 ObExprTypeCtx &type_ctx) const
 {
   int ret = OB_SUCCESS;
-  UNUSED(type_ctx);
-  
   // 验证输入参数类型
   if (OB_UNLIKELY(!ob_is_varchar_char_type(type1.get_type(), type1.get_collation_type()) &&
                   !ob_is_text(type1.get_type(), type1.get_collation_type()) &&
@@ -44,14 +43,18 @@ int ObExprWhitespaceTokenize::calc_result_type1(ObExprResType &type,
     LOG_USER_ERROR(OB_ERR_INVALID_TYPE_FOR_OP, "VARCHAR", ob_obj_type_str(type1.get_type()));
   } else {
     // 设置输入参数计算类型为 VARCHAR
+    ObCollationType calc_cs_type = type1.get_collation_type();
+    if (!ob_is_string_tc(type1.get_type()) || CS_TYPE_INVALID == calc_cs_type) {
+      calc_cs_type = ObCharset::get_default_collation(ObCharset::get_default_charset());
+    }
     type1.set_calc_type(ObVarcharType);
-    type1.set_calc_collation_type(type1.get_collation_type());
-    type1.set_calc_collation_level(type1.get_collation_level());
-    
+    type1.set_calc_collation_type(calc_cs_type);
+    type1.set_calc_collation_level(CS_LEVEL_COERCIBLE);
+
     // 设置返回类型为 VARCHAR，格式为 [token1,token2,...]
     type.set_varchar();
-    type.set_collation_type(type1.get_collation_type());
-    type.set_collation_level(type1.get_collation_level());
+    type.set_collation_type(get_default_collation_type(type.get_type(), type_ctx));
+    type.set_collation_level(CS_LEVEL_COERCIBLE);
     type.set_length(OB_MAX_VARCHAR_LENGTH);
   }
   
@@ -130,15 +133,16 @@ int ObExprWhitespaceTokenize::eval_whitespace_tokenize(const ObExpr &expr,
         
         if (OB_SUCC(ret)) {
           // 分配空间
-          char *buf = NULL;
-          if (OB_FAIL(res_alloc.alloc(result_len, buf))) {
+          char *buf= static_cast<char*>(res_alloc.alloc(result_len));
+          if(OB_ISNULL(buf)){
+            ret = OB_ALLOCATE_MEMORY_FAILED;
             LOG_WARN("failed to allocate buffer", K(ret), K(result_len));
           } else {
             // 第二遍：填充结果
             int64_t write_pos = 0;
             pos = 0;
             buf[write_pos++] = '[';
-            int64_t token_idx = 0;
+            int64_t token_idx = 0;   
             
             while (pos < len && OB_SUCC(ret)) {
               // 跳过前导空格
